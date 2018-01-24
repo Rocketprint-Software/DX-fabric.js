@@ -11291,6 +11291,22 @@ fabric.util.object.extend(fabric.Object.prototype, {
             ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
         }
     });
+    fabric.ImageBoundary.fromObject = function(object, callback) {
+        fabric.util.loadImage(object.src, function(img, error) {
+            if (error) {
+                callback && callback(null, error);
+                return;
+            }
+            fabric.ImageBoundary.prototype._initFilters.call(object, object.filters, function(filters) {
+                object.filters = filters || [];
+                fabric.ImageBoundary.prototype._initFilters.call(object, [ object.resizeFilter ], function(resizeFilters) {
+                    object.resizeFilter = resizeFilters[0];
+                    var image = new fabric.ImageBoundary(img, object);
+                    callback(image);
+                });
+            });
+        }, null, object.crossOrigin);
+    };
 })(typeof exports !== "undefined" ? exports : this);
 
 fabric.util.object.extend(fabric.Object.prototype, {
