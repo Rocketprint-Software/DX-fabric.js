@@ -34,6 +34,7 @@
      */
     scalingMode: 'contain',
 
+    _renderedDPIScalar: 1,
 
     /**
      * Constructor
@@ -57,17 +58,24 @@
 
       if(this.scalingMode === 'fill') {
         // hscale, hskew, vskew, vscale, hx, hy
-        if(m[0] < m[3]) m[0] = m[3];
+        if(Math.abs(m[0]) < Math.abs(m[3])) m[0] = m[3];
         else m[3] = m[0];
+
+        this._renderedDPIScalar = m[3];
       }
       else if(this.scalingMode === 'contain') {
-        if(m[0] < m[3]) m[3] = m[0];
+        if(Math.abs(m[0]) < Math.abs(m[3])) m[3] = m[0];
         else m[0] = m[3];
+        this._renderedDPIScalar = m[3];
       }
       else if(this.scalingMode === 'center') {
-        if(m[0] < m[3]) m[3] = m[0];
+        if(Math.abs(m[0]) < Math.abs(m[3])) m[3] = m[0];
         else m[0] = m[3];
         m[0] = m[3] = Math.min(1, m[0]);
+        this._renderedDPIScalar = m[3];
+      }
+      else if(this.scalingMode === 'stretch') {
+        this._renderedDPIScalar = Math.max(Math.abs(m[3]), Math.abs(m[0]));
       }
 
       ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
