@@ -1,4 +1,29 @@
+**Version 2.0.3**
+  - Fix: now sub target check can work with subclasses of fabric.Group [#4753](https://github.com/kangax/fabric.js/pull/4753)
+  - Improvement: PencilBrush is now compexity 1 instead of complexity N during draw [#4743](https://github.com/kangax/fabric.js/pull/4743)
+  - Fix the cleanStyle was not checking for the right property to exist [#4751](https://github.com/kangax/fabric.js/pull/4751)
+  - Fix onBeforeScaleRotate with canvas zoom [#4748](https://github.com/kangax/fabric.js/pull/4748)
+
+**Version 2.0.2**
+  - fixed image toSVG support for crop [#4738](https://github.com/kangax/fabric.js/pull/4738)
+  - changed math for better rounded results [#4734](https://github.com/kangax/fabric.js/pull/4734)
+
+**Version 2.0.1**
+  - fixed filter for blend image in WEBGL [#4706](https://github.com/kangax/fabric.js/pull/4706)
+  - fixed interactions between canvas toDataURL and multiplier + retina [#4705](https://github.com/kangax/fabric.js/pull/4705)
+  - fixed bug with originX and originY not invalidating the transform [#4703](https://github.com/kangax/fabric.js/pull/4703)
+  - fixed unwanted mutation on object enliving in fabric.Image [#4699](https://github.com/kangax/fabric.js/pull/4699)
 **Version 2.0.0**
+  - final
+    - fix dataurl and svg export on retina and rounding [#4674](https://github.com/kangax/fabric.js/pull/4674)
+    - avoid error if iText is removed on mousedown [#4650](https://github.com/kangax/fabric.js/pull/4650)
+    - fix calcOffset when text enter editing [#4649](https://github.com/kangax/fabric.js/pull/4649)
+    - Gradient fix parsing floats [#4637](https://github.com/kangax/fabric.js/pull/4637)
+    - Add CrossOrigin managment to fabric.Pattern [#4618](https://github.com/kangax/fabric.js/pull/4618)
+    - Add patternTransform toObject saving [#4626](https://github.com/kangax/fabric.js/pull/4626)
+    - normalize brushes render [#4613](https://github.com/kangax/fabric.js/pull/4613)
+    - avoid charspacing shortcut [#4594](https://github.com/kangax/fabric.js/pull/4594)
+    - Fix color toHexa() [#4579](https://github.com/kangax/fabric.js/pull/4579)
  - rc3 and rc4
     - more fixes to transformMatrix memoization
     - Canvas.selectionFullyContained allows you to select objects just when full grabbed by the selections. [#4508](https://github.com/kangax/fabric.js/pull/4508)

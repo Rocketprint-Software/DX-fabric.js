@@ -208,6 +208,39 @@
     });
   });
 
+  QUnit.test('toSVG wit crop', function(assert) {
+    var done = assert.async();
+    createImageObject(function(image) {
+      image.cropX = 1;
+      image.cropY = 1;
+      image.width -= 2;
+      image.height -= 2;
+      fabric.Object.__uid = 1;
+      var expectedSVG = '<clipPath id="imageCrop_1">\n\t<rect x="-137" y="-54" width="274" height="108" />\n</clipPath>\n<g transform="translate(137 54)">\n\t<image xlink:href="' + IMG_SRC + '" x="-138" y="-55" style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;" width="276" height="110" clip-path="url(#imageCrop_1)" ></image>\n</g>\n';
+      assert.equal(image.toSVG(), expectedSVG);
+      done();
+    });
+  });
+
+  QUnit.test('hasCrop', function(assert) {
+    var done = assert.async();
+    createImageObject(function(image) {
+      assert.ok(typeof image.hasCrop === 'function');
+      assert.equal(image.hasCrop(), false, 'standard image has no crop');
+      image.cropX = 1;
+      assert.equal(image.hasCrop(), true, 'cropX !== 0 gives crop true');
+      image.cropX = 0;
+      image.cropY = 1;
+      assert.equal(image.hasCrop(), true, 'cropY !== 0 gives crop true');
+      image.width -= 1;
+      assert.equal(image.hasCrop(), true, 'width < element.width gives crop true');
+      image.width += 1;
+      image.height -= 1;
+      assert.equal(image.hasCrop(), true, 'height < element.height gives crop true');
+      done();
+    });
+  });
+
   QUnit.test('toSVG', function(assert) {
     var done = assert.async();
     createImageObject(function(image) {
@@ -333,6 +366,39 @@
     });
     fabric.Image.fromObject(obj, function(instance){
       assert.ok(instance instanceof fabric.Image);
+      done();
+    });
+  });
+
+  QUnit.test('fromObject does not mutate data', function(assert) {
+    var done = assert.async();
+    assert.ok(typeof fabric.Image.fromObject === 'function');
+
+    var obj = fabric.util.object.extend(fabric.util.object.clone(REFERENCE_IMG_OBJECT), {
+      src: IMG_SRC
+    });
+    var brightness = {
+      type: 'Brightness',
+      brightness: 0.1
+    };
+    var contrast = {
+      type: 'Contrast',
+      contrast: 0.1
+    };
+    obj.filters = [brightness];
+    obj.resizeFilter = contrast;
+    var copyOfFilters = obj.filters;
+    var copyOfBrighteness = brightness;
+    var copyOfContrast = contrast;
+    var copyOfObject = obj;
+    fabric.Image.fromObject(obj, function(){
+      assert.ok(copyOfFilters === obj.filters, 'filters array did not mutate');
+      assert.ok(copyOfBrighteness === copyOfFilters[0], 'filter is same object');
+      assert.deepEqual(copyOfBrighteness, obj.filters[0], 'did not mutate filter');
+      assert.deepEqual(copyOfFilters, obj.filters, 'did not mutate array');
+      assert.deepEqual(copyOfContrast, obj.resizeFilter, 'did not mutate object');
+      assert.deepEqual(copyOfObject, obj, 'did not change any value');
+      assert.ok(copyOfContrast === obj.resizeFilter, 'resizefilter is same object');
       done();
     });
   });
@@ -564,6 +630,18 @@
       assert.deepEqual(imgObject.get('scaleX'), 5, 'scaleX compensate the width');
       assert.deepEqual(imgObject.get('scaleY'), 5, 'scaleY compensate the height');
       assert.deepEqual(imgObject.getSrc(), IMAGE_DATA_URL, 'src of an object');
+      done();
+    });
+  });
+
+  QUnit.test('consecutive dataURLs give same result.', function(assert) {
+    var done = assert.async();
+    createImageObject(function(image) {
+      var data1 = image.toDataURL();
+      var data2 = image.toDataURL();
+      var data3 = image.toDataURL();
+      assert.equal(data1, data2, 'dataurl does not change 1');
+      assert.equal(data1, data3, 'dataurl does not change 2');
       done();
     });
   });
