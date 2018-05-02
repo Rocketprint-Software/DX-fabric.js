@@ -22079,31 +22079,42 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
 
   'use strict';
 
-  var extend = fabric.util.object.extend;
+  var fabric = global.fabric || (global.fabric = { }),
+      extend = fabric.util.object.extend;
 
-  if (!global.fabric) {
-    global.fabric = { };
-  }
-
-  if (global.fabric.ImageBoundary) {
-    fabric.warn('fabric.ImageBoundary is already defined.');
+  if (fabric.ImageArea) {
+    fabric.warn('fabric.ImageArea is already defined');
     return;
   }
 
   /**
-   * ImageBoundary class
-   * @class fabric.ImageBoundary
-   * @extends fabric.Image
-   * @see {@link fabric.ImageBoundary#initialize} for constructor definition
+   * Class that positions an Image element inside it's boundaries
+   * @class fabric.ImageArea
+   * @extends fabric.Object
+   * @return {fabric.ImageArea} thisArg
+   * @see {@link fabric.ImageArea#initialize} for constructor definition
    */
-  fabric.ImageBoundary = fabric.util.createClass(fabric.Image, fabric.Observable, /** @lends fabric.ImageBoundary.prototype */ {
+  fabric.ImageArea = fabric.util.createClass(fabric.Object, /** @lends fabric.ImageArea.prototype */ {
+
+    /**
+     * List of properties to consider when checking if state of an object is changed ({@link fabric.Object#hasStateChanged})
+     * as well as for history (undo/redo) purposes
+     * @type Array
+     */
+    stateProperties: fabric.Object.prototype.stateProperties.concat('childImage'),
 
     /**
      * Type of an object
      * @type String
      * @default
      */
-    type: 'image-boundary',
+    type: 'image-area',
+
+    /**
+     * The image element this area is containing
+     * @type fabric.Image
+    */
+    childImage: null,
 
     /**
      * The current scaling mode (fill, contain, center or stretch)
@@ -22111,77 +22122,153 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
      */
     scalingMode: 'contain',
 
-    _renderedDPIScalar: 1,
+    cacheProperties: fabric.Object.prototype.cacheProperties.concat('childImage'),
 
     /**
      * Constructor
-     * @param {HTMLImageElement | String} element Image element
      * @param {Object} [options] Options object
-     * @param {function} [callback] callback function to call after eventual filters applied.
-     * @return {fabric.Image} thisArg
+     * @return {Object} thisArg
      */
-    initialize: function(element, options) {
-      this.callSuper('initialize', element, options);
+    initialize: function(element, options, imageOptions) {
+      this.childImage = new fabric.Image(element, imageOptions);
+      this.callSuper('initialize', options);
+      console.log('init');
+
+      this.on('added', function() {
+        this.canvas.add(this.childImage);
+        this.childImage.set({
+          evented: false,
+          originX: 'center',
+          originY: 'center',
+        });
+        this.updateChildPosition();
+      });
+
+      this.on('removed', function() {
+        this.childImage.canvas.remove(this.childImage);
+      });
+
+      this.on('moving', function() {
+          this.updateChildPosition();
+      });
+
+      this.on('scaling', function() {
+          this.updateChildPosition();
+      });
+
+      this.on('rotating', function() {
+          this.updateChildPosition();
+      });
     },
 
-    transform: function(ctx) {
-      var m;
-      if (this.group && !this.group._transformDone) {
-        m = this.calcTransformMatrix();
-      }
-      else {
-        m = this.calcOwnMatrix();
-      }
+    updateChildPosition: function() {
+        var cx = this.left + this.width / 2 * this.scaleX;
+        var cy = this.top + this.height / 2 * this.scaleY;
+        this.childImage.angle = this.angle;
+        this.childImage.left = cx;
+        this.childImage.top = cy;
 
-      if(this.scalingMode === 'fill') {
-        // hscale, hskew, vskew, vscale, hx, hy
-        if(Math.abs(m[0]) < Math.abs(m[3])) m[0] = m[3];
-        else m[3] = m[0];
+        if (this.scalingMode === 'center') {
+            // do nothing
+        } else if (this.scalingMode === 'stretch') {
+            this.childImage.scaleX = (this.width * this.scaleX) / this.childImage.width;
+            this.childImage.scaleY = (this.height * this.scaleY) / this.childImage.height;
+        } else if (this.scalingMode === 'contain' || this.scalingMode === 'fill') {
+            var scale = 1;
+            var tw = this.width * this.scaleX;
+            var th = this.height * this.scaleY;
 
-        this._renderedDPIScalar = m[3];
-      }
-      else if(this.scalingMode === 'contain') {
-        if(Math.abs(m[0]) < Math.abs(m[3])) m[3] = m[0];
-        else m[0] = m[3];
-        this._renderedDPIScalar = m[3];
-      }
-      else if(this.scalingMode === 'center') {
-        if(Math.abs(m[0]) < Math.abs(m[3])) m[3] = m[0];
-        else m[0] = m[3];
-        m[0] = m[3] = Math.min(1, m[0]);
-        this._renderedDPIScalar = m[3];
-      }
-      else if(this.scalingMode === 'stretch') {
-        this._renderedDPIScalar = Math.max(Math.abs(m[3]), Math.abs(m[0]));
-      }
-
-      ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+            var yIsBigger = (this.childImage.width / this.childImage.height) > (tw / th);
+            if ((!yIsBigger && this.scalingMode === 'contain') || (yIsBigger && this.scalingMode === 'fill')) {
+                scale = (this.height * this.scaleY) / this.childImage.height;
+            } else {
+                scale = (this.width * this.scaleX) / this.childImage.width;
+            }
+            this.childImage.scaleX = this.childImage.scaleY = scale;
+        }
     },
-  });
 
+    _render: function(ctx) {
+
+    },
 
     /**
-     * Creates an instance of fabric.Image from its object representation
-     * @static
-     * @param {Object} object Object to create an instance from
-     * @param {Function} callback Callback to invoke when an image instance is created
+     * Returns object representation of an instance
+     * @param {Array} [propertiesToInclude] Any properties that you might want to additionally include in the output
+     * @return {Object} object representation of an instance
      */
-    fabric.ImageBoundary.fromObject = function(object, callback) {
-      fabric.util.loadImage(object.src, function(img, error) {
-        if (error) {
-          callback && callback(null, error);
-          return;
-        }
-        fabric.ImageBoundary.prototype._initFilters.call(object, object.filters, function(filters) {
-          object.filters = filters || [];
-          fabric.ImageBoundary.prototype._initFilters.call(object, [object.resizeFilter], function(resizeFilters) {
-            object.resizeFilter = resizeFilters[0];
-            var image = new fabric.ImageBoundary(img, object);
-            callback(image);
-          });
-        });
-      }, null, object.crossOrigin);
-    };
+    toObject: function(propertiesToInclude) {
+      return this.callSuper('toObject', [].concat(propertiesToInclude));
+    },
+
+    /* _TO_SVG_START_ */
+    /**
+     * Returns svg representation of an instance
+     * @param {Function} [reviver] Method for further parsing of svg representation.
+     * @return {String} svg representation of an instance
+     */
+    toSVG: function(reviver) {
+      // var markup = this._createBaseSVGMarkup(), x = -this.width / 2, y = -this.height / 2;
+      // markup.push(
+      //   '<rect ', this.getSvgId(),
+      //   'x="', x, '" y="', y,
+      //   '" rx="', this.get('rx'), '" ry="', this.get('ry'),
+      //   '" width="', this.width, '" height="', this.height,
+      //   '" style="', this.getSvgStyles(),
+      //   '" transform="', this.getSvgTransform(),
+      //   this.getSvgTransformMatrix(), '"',
+      //   this.addPaintOrder(),
+      //   '/>\n');
+      //
+      // return reviver ? reviver(markup.join('')) : markup.join('');
+      return revier ? reviver('') : '';
+    },
+    /* _TO_SVG_END_ */
+  });
+
+  /* _FROM_SVG_START_ */
+  /**
+   * List of attribute names to account for when parsing SVG element (used by `fabric.ImageArea.fromElement`)
+   * @static
+   * @memberOf fabric.ImageArea
+   * @see: http://www.w3.org/TR/SVG/shapes.html#ImageAreaElement
+   */
+  fabric.ImageArea.ATTRIBUTE_NAMES = fabric.SHARED_ATTRIBUTES.concat('x y width height'.split(' '));
+
+  /**
+   * Returns {@link fabric.ImageArea} instance from an SVG element
+   * @static
+   * @memberOf fabric.ImageArea
+   * @param {SVGElement} element Element to parse
+   * @param {Function} callback callback function invoked after parsing
+   * @param {Object} [options] Options object
+   */
+  fabric.ImageArea.fromElement = function(element, callback, options) {
+    if (!element) {
+      return callback(null);
+    }
+    options = options || { };
+
+    var parsedAttributes = fabric.parseAttributes(element, fabric.ImageArea.ATTRIBUTE_NAMES);
+
+    parsedAttributes.left = parsedAttributes.left || 0;
+    parsedAttributes.top  = parsedAttributes.top  || 0;
+    var imgA = new fabric.ImageArea(extend((options ? fabric.util.object.clone(options) : { }), parsedAttributes));
+    imgA.visible = imgA.visible && imgA.width > 0 && imgA.height > 0;
+    callback(imgA);
+  };
+  /* _FROM_SVG_END_ */
+
+  /**
+   * Returns {@link fabric.ImageArea} instance from an object representation
+   * @static
+   * @memberOf fabric.ImageArea
+   * @param {Object} object Object to create an instance from
+   * @param {Function} [callback] Callback to invoke when an fabric.ImageArea instance is created
+   */
+  fabric.ImageArea.fromObject = function(object, callback) {
+    return fabric.Object._fromObject('ImageArea', object, callback);
+  };
 
 })(typeof exports !== 'undefined' ? exports : this);
 
