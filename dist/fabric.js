@@ -21638,7 +21638,7 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
       var object = extend(
         this.callSuper(
           'toObject',
-          ['id', 'evented', 'crossOrigin', 'cropX', 'cropY'].concat(propertiesToInclude)
+          ['id', 'childImage', 'evented', 'crossOrigin', 'cropX', 'cropY'].concat(propertiesToInclude)
         ), {
           src: this.getSrc(),
           filters: filters,
@@ -22187,6 +22187,7 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
           originX: 'center',
           originY: 'center',
           id: this.childImageId,
+          childImage: true
         });
         this.updateChildPosition();
       }
@@ -22201,7 +22202,7 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
         if (typeof obj === 'undefined')
           return undefined;
         else
-          this.childImage = obj;
+          this.setChildImage(obj);
       }
 
       return this.childImage;
@@ -22277,6 +22278,26 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
     _render: function(ctx) {
       this._stroke(ctx);
       this._renderPaintInOrder(ctx);
+    },
+
+    /**
+     * Pass through functions to the child Image class
+     */
+    setSrc: function(src, callback, options) {
+      var childImage_ = this.getChildImage();
+      if (typeof childImage_ !== 'undefined') 
+        childImage_.setSrc(src, function (a) {
+          callback && callback(a);
+          this.updateChildPosition();
+        }, options);
+    },
+
+    setElement: function(element, options) {
+      var childImage_ = this.getChildImage();
+      if (typeof childImage_ !== 'undefined') {
+        childImage_.setElement(element, options);
+        this.updateChildPosition();
+      }
     },
 
     /**

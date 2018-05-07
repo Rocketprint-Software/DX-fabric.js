@@ -110,6 +110,7 @@
           originX: 'center',
           originY: 'center',
           id: this.childImageId,
+          childImage: true
         });
         this.updateChildPosition();
       }
@@ -124,7 +125,7 @@
         if (typeof obj === 'undefined')
           return undefined;
         else
-          this.childImage = obj;
+          this.setChildImage(obj);
       }
 
       return this.childImage;
@@ -200,6 +201,26 @@
     _render: function(ctx) {
       this._stroke(ctx);
       this._renderPaintInOrder(ctx);
+    },
+
+    /**
+     * Pass through functions to the child Image class
+     */
+    setSrc: function(src, callback, options) {
+      var childImage_ = this.getChildImage();
+      if (typeof childImage_ !== 'undefined') 
+        childImage_.setSrc(src, function (a) {
+          callback && callback(a);
+          this.updateChildPosition();
+        }, options);
+    },
+
+    setElement: function(element, options) {
+      var childImage_ = this.getChildImage();
+      if (typeof childImage_ !== 'undefined') {
+        childImage_.setElement(element, options);
+        this.updateChildPosition();
+      }
     },
 
     /**
