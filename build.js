@@ -200,7 +200,7 @@ var filesToInclude = [
   ifSpecifiedInclude('interaction', 'src/shapes/active_selection.class.js'),
   'src/shapes/image.class.js',
   'src/shapes/image-area.class.js',
-  //'src/shapes/image-boundary.class.js',
+  'src/shapes/image-boundary.class.js',
 
   ifSpecifiedInclude('object_straightening', 'src/mixins/object_straightening.mixin.js'),
   ifSpecifiedInclude('image_filters', 'src/filters/webgl_backend.class.js'),

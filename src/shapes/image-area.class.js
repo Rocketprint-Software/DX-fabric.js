@@ -37,13 +37,27 @@
      * The image element this area is containing
      * @type fabric.Image
     */
-    childImage: null,
+    childImage: undefined,
+
+    /**
+     * The ID of the image element this area is containing
+     * @type Number
+     */
+    childImageId: -1,
 
     /**
      * The current scaling mode (fill, contain, center or stretch)
      * @type String
      */
     scalingMode: 'contain',
+
+    /**
+     * Width of a stroke.
+     * For image quality a stroke multiple of 2 gives better results.
+     * @type Number
+     * @default
+     */
+    strokeWidth: 0,
 
     cacheProperties: fabric.Object.prototype.cacheProperties.concat('childImage'),
 
@@ -53,18 +67,12 @@
      * @return {Object} thisArg
      */
     initialize: function(element, options, imageOptions) {
-      this.childImage = new fabric.Image(element, imageOptions);
       this.callSuper('initialize', options);
-      console.log('init');
 
       this.on('added', function() {
-        this.canvas.add(this.childImage);
-        this.childImage.set({
-          evented: false,
-          originX: 'center',
-          originY: 'center',
-        });
-        this.updateChildPosition();
+        if (typeof element !== 'undefined') {
+          this.setChildImage(element, imageOptions);
+        }
       });
 
       this.on('removed', function() {
@@ -72,47 +80,126 @@
       });
 
       this.on('moving', function() {
-          this.updateChildPosition();
+        this.updateChildPosition();
       });
 
       this.on('scaling', function() {
-          this.updateChildPosition();
+        this.updateChildPosition();
       });
 
       this.on('rotating', function() {
-          this.updateChildPosition();
+        this.updateChildPosition();
       });
     },
 
-    updateChildPosition: function() {
-        var cx = this.left + this.width / 2 * this.scaleX;
-        var cy = this.top + this.height / 2 * this.scaleY;
-        this.childImage.angle = this.angle;
-        this.childImage.left = cx;
-        this.childImage.top = cy;
-
-        if (this.scalingMode === 'center') {
-            // do nothing
-        } else if (this.scalingMode === 'stretch') {
-            this.childImage.scaleX = (this.width * this.scaleX) / this.childImage.width;
-            this.childImage.scaleY = (this.height * this.scaleY) / this.childImage.height;
-        } else if (this.scalingMode === 'contain' || this.scalingMode === 'fill') {
-            var scale = 1;
-            var tw = this.width * this.scaleX;
-            var th = this.height * this.scaleY;
-
-            var yIsBigger = (this.childImage.width / this.childImage.height) > (tw / th);
-            if ((!yIsBigger && this.scalingMode === 'contain') || (yIsBigger && this.scalingMode === 'fill')) {
-                scale = (this.height * this.scaleY) / this.childImage.height;
-            } else {
-                scale = (this.width * this.scaleX) / this.childImage.width;
-            }
-            this.childImage.scaleX = this.childImage.scaleY = scale;
+    setChildImage: function(element, imageOptions) {
+      if (typeof element !== 'undefined') {
+        if (element instanceof Image) {
+          this.childImage = new fabric.Image(element, imageOptions);
+          this.canvas.add(this.childImage);
         }
+        else if(element instanceof fabric.Image) {
+          this.childImage = element;
+        }
+      }
+
+      if (typeof this.childImage !== 'undefined') {
+        this.childImageId = 'childImage' + (fabric.ImageArea.nextId++);
+        this.childImage.set({
+          evented: false,
+          originX: 'center',
+          originY: 'center',
+          id: this.childImageId,
+        });
+        this.updateChildPosition();
+      }
+    },
+
+    getChildImage: function() {
+      // if the childImage isn't defined
+      if (typeof this.childImage === 'undefined') {
+        // search for it on the canvas
+        var childImageId = this.childImageId;
+        var obj = this.canvas.getObjects().find(function(o) { return o.id === childImageId });
+        if (typeof obj === 'undefined')
+          return undefined;
+        else
+          this.childImage = obj;
+      }
+
+      return this.childImage;
+    },
+
+    updateChildPosition: function() {
+      var childImage = this.getChildImage();
+      if (typeof childImage === 'undefined') {
+        return;
+      }
+
+      var center = this.getCenterPoint();
+      childImage.angle = this.angle;
+      childImage.left = center.x;
+      childImage.top = center.y;
+
+      if (this.scalingMode === 'center') {
+        // do nothing
+      } else if (this.scalingMode === 'stretch') {
+        childImage.scaleX = (this.width * this.scaleX) / childImage.width;
+        childImage.scaleY = (this.height * this.scaleY) / childImage.height;
+      } else if (this.scalingMode === 'contain' || this.scalingMode === 'fill') {
+        var scale = 1;
+        var tw = this.width * this.scaleX;
+        var th = this.height * this.scaleY;
+
+        var yIsBigger = (childImage.width / childImage.height) > (tw / th);
+        if ((!yIsBigger && this.scalingMode === 'contain') || (yIsBigger && this.scalingMode === 'fill')) {
+          scale = (this.height * this.scaleY) / childImage.height;
+        } else {
+          scale = (this.width * this.scaleX) / childImage.width;
+        }
+        childImage.scaleX = childImage.scaleY = scale;
+      }
+    },
+
+    _stroke: function(ctx) {
+      if (!this.stroke || this.strokeWidth === 0) {
+        return;
+      }
+      var w = this.width / 2, h = this.height / 2;
+      ctx.beginPath();
+      ctx.moveTo(-w, -h);
+      ctx.lineTo(w, -h);
+      ctx.lineTo(w, h);
+      ctx.lineTo(-w, h);
+      ctx.lineTo(-w, -h);
+      ctx.closePath();
+    },
+
+    /**
+     * @private
+     * @param {CanvasRenderingContext2D} ctx Context to render on
+     */
+    _renderDashedStroke: function(ctx) {
+      var x = -this.width / 2,
+          y = -this.height / 2,
+          w = this.width,
+          h = this.height;
+
+      ctx.save();
+      this._setStrokeStyles(ctx, this);
+
+      ctx.beginPath();
+      fabric.util.drawDashedLine(ctx, x, y, x + w, y, this.strokeDashArray);
+      fabric.util.drawDashedLine(ctx, x + w, y, x + w, y + h, this.strokeDashArray);
+      fabric.util.drawDashedLine(ctx, x + w, y + h, x, y + h, this.strokeDashArray);
+      fabric.util.drawDashedLine(ctx, x, y + h, x, y, this.strokeDashArray);
+      ctx.closePath();
+      ctx.restore();
     },
 
     _render: function(ctx) {
-
+      this._stroke(ctx);
+      this._renderPaintInOrder(ctx);
     },
 
     /**
@@ -121,7 +208,7 @@
      * @return {Object} object representation of an instance
      */
     toObject: function(propertiesToInclude) {
-      return this.callSuper('toObject', [].concat(propertiesToInclude));
+      return this.callSuper('toObject', [ 'childImageId', 'scalingMode' ].concat(propertiesToInclude));
     },
 
     /* _TO_SVG_START_ */
@@ -131,20 +218,7 @@
      * @return {String} svg representation of an instance
      */
     toSVG: function(reviver) {
-      // var markup = this._createBaseSVGMarkup(), x = -this.width / 2, y = -this.height / 2;
-      // markup.push(
-      //   '<rect ', this.getSvgId(),
-      //   'x="', x, '" y="', y,
-      //   '" rx="', this.get('rx'), '" ry="', this.get('ry'),
-      //   '" width="', this.width, '" height="', this.height,
-      //   '" style="', this.getSvgStyles(),
-      //   '" transform="', this.getSvgTransform(),
-      //   this.getSvgTransformMatrix(), '"',
-      //   this.addPaintOrder(),
-      //   '/>\n');
-      //
-      // return reviver ? reviver(markup.join('')) : markup.join('');
-      return revier ? reviver('') : '';
+      return reviver ? reviver('') : '';
     },
     /* _TO_SVG_END_ */
   });
@@ -190,7 +264,12 @@
    * @param {Function} [callback] Callback to invoke when an fabric.ImageArea instance is created
    */
   fabric.ImageArea.fromObject = function(object, callback) {
-    return fabric.Object._fromObject('ImageArea', object, callback);
+    var o = new fabric.ImageArea(undefined, object);
+    callback(o);
+    return o;
+    //return fabric.Object._fromObject('ImageArea', object, callback);
   };
+
+  fabric.ImageArea.nextId = 0;
 
 })(typeof exports !== 'undefined' ? exports : this);
