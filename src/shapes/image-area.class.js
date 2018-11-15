@@ -92,6 +92,38 @@
       });
     },
 
+    _superZIndexOperation: function(operation) {
+      // remove the child image so it doesn't interfere
+      var canv = this.childImage.canvas;
+      canv.remove(this.childImage);
+
+      // execute as usual
+      this.callSuper(operation);
+
+      // add child image back
+      canv.add(this.childImage);
+
+      // set child image's z-index to the same as us
+      canv.moveTo(this.childImage, this.canvas.getObjects().indexOf(this));
+    },
+
+    bringToFront: function() {
+      this._superZIndexOperation('bringToFront');
+    },
+
+    bringForward: function() {
+      this._superZIndexOperation('bringForward');
+    },
+
+    sendToBack: function() {
+      console.log('sending to back');
+      this._superZIndexOperation('sendToBack');
+    },
+
+    sendBackwards: function() {
+      this._superZIndexOperation('sendBackwards');
+    },
+
     setChildImage: function(element, imageOptions) {
       if (typeof element !== 'undefined') {
         if (element instanceof Image) {
